@@ -10,21 +10,21 @@ class PreguntaController extends Controller
 {
     public function index()
     {
-        if (auth()->user()->isAlumno()) {
-                $preguntas = Pregunta::activas()->orderBy('numero')->get();
-            } else {
-                // Admin ve todas
-                $preguntas = Pregunta::orderBy('numero')->get();
-            }
-            
-            if (auth()->check()) {
-                $progreso = ProgresoUsuario::where('user_id', auth()->id())
-                    ->pluck('es_correcta', 'pregunta_id');
-            } else {
-                $progreso = collect();
-            }
-            
-            return view('preguntas.index', compact('preguntas', 'progreso'));
+        if (auth()->check() && auth()->user()->isAlumno()) {
+            $preguntas = Pregunta::activas()->orderBy('numero')->get();
+        } else {
+            // Admin ve todas
+            $preguntas = Pregunta::orderBy('numero')->get();
+        }
+        
+        if (auth()->check()) {
+            $progreso = ProgresoUsuario::where('user_id', auth()->id())
+                ->pluck('es_correcta', 'pregunta_id');
+        } else {
+            $progreso = collect();
+        }
+        
+        return view('preguntas.index', compact('preguntas', 'progreso'));
     }
 
     public function show($id)
@@ -32,7 +32,7 @@ class PreguntaController extends Controller
         $pregunta = Pregunta::findOrFail($id);
         
         // Verificar si el alumno puede ver esta pregunta
-        if (auth()->user()->isAlumno() && !$pregunta->activa) {
+        if (auth()->check() && auth()->user()->isAlumno() && !$pregunta->activa) {
             abort(403, 'Esta pregunta no está disponible en este momento.');
         }
         
@@ -55,6 +55,13 @@ class PreguntaController extends Controller
     {
         $pregunta = Pregunta::findOrFail($id);
         
+        if (!auth()->check()) {
+            return response()->json([
+                'error' => true,
+                'mensaje' => 'Debes estar autenticado para verificar respuestas.'
+            ], 401);
+        }
+        
         // Verificar si ya respondió
         $progresoExistente = ProgresoUsuario::where('user_id', auth()->id())
             ->where('pregunta_id', $id)
@@ -69,11 +76,13 @@ class PreguntaController extends Controller
         
         $respuestaUsuario = $request->input('respuesta');
         $respuestaCorrecta = $pregunta->respuesta_correcta;
+        $configuracion = $pregunta->configuracion ?? [];
         
         $esCorrecta = $this->validarRespuesta(
             $pregunta->tipo_interaccion, 
             $respuestaUsuario, 
-            $respuestaCorrecta
+            $respuestaCorrecta,
+            $configuracion
         );
         
         // Guardar progreso
@@ -95,9 +104,9 @@ class PreguntaController extends Controller
         ]);
     }
 
-    private function validarRespuesta($tipo, $usuario, $correcta)
+    private function validarRespuesta($tipo, $usuario, $correcta, $configuracion = [])
     {
-        if (!$usuario) {
+        if (!$usuario || empty($tipo)) {
             return false;
         }
 
@@ -118,10 +127,22 @@ class PreguntaController extends Controller
                 return $this->validarEmparejar($usuario, $correcta);
             
             case 'rellenar':
-                return $this->validarRellenar($usuario, $correcta);
+                return $this->validarRellenar($usuario, $correcta, $configuracion);
             
             case 'texto_libre':
                 return $this->validarTextoLibre($usuario, $correcta);
+            
+            case 'colocar_piezas':
+                return $this->validarColocarPiezas($usuario, $correcta);
+            
+            case 'rompecabezas_hexagonos':
+                return $this->validarRompecabezasHexagonos($usuario, $correcta);
+            
+            case 'colorear_hexagonos':
+                return $this->validarColorearHexagonos($usuario, $correcta);
+            
+            case 'tejer_alfombra':
+                return $this->validarTejerAlfombra($usuario, $correcta);
             
             default:
                 return false;
@@ -137,7 +158,35 @@ class PreguntaController extends Controller
 
     private function validarSeleccionMultiple($usuario, $correcta)
     {
-        // $correcta puede ser [['1', '2', '3']] o ['1', '2', '3']
+        // Verificar si es formato de computadoras (pregunta 23)
+        if (isset($correcta[0]) && is_array($correcta[0]) && isset($correcta[0]['computadora'])) {
+            // Formato: [{computadora: 1, estado: 'virus_rojo'}, ...]
+            if (!is_array($usuario) || count($usuario) !== count($correcta)) {
+                return false;
+            }
+            
+            // Verificar que cada computadora tenga el estado correcto
+            foreach ($correcta as $respuestaCorrecta) {
+                $encontrado = false;
+                foreach ($usuario as $respuestaUsuario) {
+                    if (isset($respuestaUsuario['computadora']) && isset($respuestaUsuario['estado']) &&
+                        isset($respuestaCorrecta['computadora']) && isset($respuestaCorrecta['estado'])) {
+                        
+                        if ((int)$respuestaUsuario['computadora'] === (int)$respuestaCorrecta['computadora'] &&
+                            (string)$respuestaUsuario['estado'] === (string)$respuestaCorrecta['estado']) {
+                            $encontrado = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$encontrado) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
+        // Formato estándar: $correcta puede ser [['1', '2', '3']] o ['1', '2', '3']
         $correctaFlat = is_array($correcta[0] ?? null) && is_string($correcta[0]) 
             ? $correcta 
             : ($correcta[0] ?? []);
@@ -225,7 +274,7 @@ class PreguntaController extends Controller
         return true;
     }
 
-    private function validarRellenar($usuario, $correcta)
+    private function validarRellenar($usuario, $correcta, $configuracion = [])
     {
         if (!is_array($usuario) || !is_array($correcta)) {
             return false;
@@ -235,7 +284,30 @@ class PreguntaController extends Controller
             return false;
         }
         
-        // Para rellenar, verificar que todas las áreas tengan el color correcto
+        // Si hay tipo_validacion flexible, validar contra reglas lógicas
+        if (isset($configuracion['tipo_validacion']) && $configuracion['tipo_validacion'] === 'flexible') {
+            return $this->validarRellenarFlexible($usuario, $configuracion);
+        }
+        
+        // Validación estándar: comparar contra respuesta exacta
+        // Si hay múltiples soluciones (array de arrays), verificar contra todas
+        if (isset($correcta[0]) && is_array($correcta[0]) && isset($correcta[0][0]) && is_array($correcta[0][0])) {
+            // Múltiples soluciones posibles: [[solucion1], [solucion2], ...]
+            foreach ($correcta as $solucion) {
+                if ($this->compararRellenar($usuario, $solucion)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Una sola solución
+        return $this->compararRellenar($usuario, $correcta);
+    }
+    
+    private function compararRellenar($usuario, $correcta)
+    {
+        // Verificar que todas las áreas tengan el color correcto
         foreach ($correcta as $colorCorrecto) {
             $encontrado = false;
             foreach ($usuario as $respuesta) {
@@ -249,39 +321,309 @@ class PreguntaController extends Controller
                 return false;
             }
         }
+        return true;
+    }
+    
+    private function validarRellenarFlexible($usuario, $configuracion)
+    {
+        // Validar que áreas adyacentes no tengan el mismo color
+        // Esto requiere definir qué áreas son adyacentes en la configuración
+        
+        // Por ahora, validar que:
+        // 1. Todas las áreas estén coloreadas
+        // 2. No haya áreas duplicadas
+        // 3. Los colores sean válidos
+        
+        $areas = $configuracion['areas'] ?? [];
+        $coloresValidos = $configuracion['colores_disponibles'] ?? [];
+        
+        // Mapeo de colores en español a inglés
+        $colorMap = [
+            'verde' => 'green',
+            'amarillo' => 'yellow',
+            'azul' => 'blue',
+            'green' => 'green',
+            'yellow' => 'yellow',
+            'blue' => 'blue'
+        ];
+        
+        // Normalizar colores válidos
+        $coloresValidosNormalizados = [];
+        foreach ($coloresValidos as $color) {
+            $normalizado = $colorMap[$color] ?? $color;
+            $coloresValidosNormalizados[] = $normalizado;
+            // También agregar versión en español
+            foreach ($colorMap as $esp => $eng) {
+                if ($eng === $normalizado) {
+                    $coloresValidosNormalizados[] = $esp;
+                }
+            }
+        }
+        
+        // Verificar que todas las áreas estén coloreadas
+        $areasColoreadas = [];
+        foreach ($usuario as $respuesta) {
+            if (!isset($respuesta['area']) || !isset($respuesta['color'])) {
+                return false;
+            }
+            
+            // Normalizar color de respuesta
+            $colorRespuesta = $respuesta['color'];
+            $colorNormalizado = $colorMap[$colorRespuesta] ?? $colorRespuesta;
+            
+            // Verificar que el color sea válido
+            if (!in_array($colorRespuesta, $coloresValidosNormalizados) && 
+                !in_array($colorNormalizado, $coloresValidosNormalizados)) {
+                return false;
+            }
+            
+            // Verificar que no haya áreas duplicadas
+            if (isset($areasColoreadas[$respuesta['area']])) {
+                return false;
+            }
+            
+            $areasColoreadas[$respuesta['area']] = $colorNormalizado;
+        }
+        
+        // Verificar que todas las áreas requeridas estén coloreadas
+        foreach ($areas as $area) {
+            if (!isset($areasColoreadas[$area['id']])) {
+                return false;
+            }
+        }
+        
+        // Validar regla: áreas adyacentes no pueden tener el mismo color
+        // Para la pregunta 14 (flor), las reglas son:
+        // - Fondo toca todos los pétalos y el centro
+        // - Cada pétalo toca el fondo y el centro
+        // - El centro toca el fondo y todos los pétalos
+        
+        // Definir adyacencias para la pregunta 14
+        $adyacencias = [
+            'fondo' => ['petalo1', 'petalo2', 'petalo3', 'petalo4', 'petalo5', 'centro'],
+            'petalo1' => ['fondo', 'centro'],
+            'petalo2' => ['fondo', 'centro'],
+            'petalo3' => ['fondo', 'centro'],
+            'petalo4' => ['fondo', 'centro'],
+            'petalo5' => ['fondo', 'centro'],
+            'centro' => ['fondo', 'petalo1', 'petalo2', 'petalo3', 'petalo4', 'petalo5']
+        ];
+        
+        // Si hay adyacencias definidas en la configuración, usarlas
+        if (isset($configuracion['adyacencias'])) {
+            $adyacencias = $configuracion['adyacencias'];
+        }
+        
+        // Verificar que áreas adyacentes no tengan el mismo color
+        foreach ($areasColoreadas as $areaId => $colorArea) {
+            if (isset($adyacencias[$areaId])) {
+                foreach ($adyacencias[$areaId] as $areaAdyacente) {
+                    if (isset($areasColoreadas[$areaAdyacente])) {
+                        // Normalizar ambos colores para comparar
+                        $colorAdyacente = $areasColoreadas[$areaAdyacente];
+                        $colorAreaNormalizado = $colorMap[$colorArea] ?? $colorArea;
+                        $colorAdyacenteNormalizado = $colorMap[$colorAdyacente] ?? $colorAdyacente;
+                        
+                        // Si los colores normalizados son iguales, es incorrecto
+                        if ($colorAreaNormalizado === $colorAdyacenteNormalizado) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
         
         return true;
     }
 
-private function validarTextoLibre($usuario, $correcta)
-{
-    // Validar que el usuario envió algo
-    if (!isset($usuario[0]) || empty(trim($usuario[0]))) {
+    private function validarTextoLibre($usuario, $correcta)
+    {
+        // Validar que el usuario envió algo
+        if (!isset($usuario[0]) || empty(trim($usuario[0]))) {
+            return false;
+        }
+
+        $respuestaUsuario = strtolower(trim($usuario[0]));
+        
+        // Normalizar $correcta para que siempre sea un array plano de strings
+        if (!is_array($correcta)) {
+            $correcta = [$correcta];
+        }
+        
+        // Si es array anidado [['4']], aplanar a ['4']
+        if (isset($correcta[0]) && is_array($correcta[0])) {
+            $correcta = $correcta[0];
+        }
+        
+        // Comparar con cada respuesta válida
+        foreach ($correcta as $opcionCorrecta) {
+            $opcionCorrecta = strtolower(trim((string)$opcionCorrecta));
+            
+            if ($respuestaUsuario === $opcionCorrecta) {
+                return true;
+            }
+        }
+        
         return false;
     }
 
-    $respuestaUsuario = strtolower(trim($usuario[0]));
-    
-    // Normalizar $correcta para que siempre sea un array plano de strings
-    if (!is_array($correcta)) {
-        $correcta = [$correcta];
-    }
-    
-    // Si es array anidado [['4']], aplanar a ['4']
-    if (isset($correcta[0]) && is_array($correcta[0])) {
-        $correcta = $correcta[0];
-    }
-    
-    // Comparar con cada respuesta válida
-    foreach ($correcta as $opcionCorrecta) {
-        $opcionCorrecta = strtolower(trim((string)$opcionCorrecta));
-        
-        if ($respuestaUsuario === $opcionCorrecta) {
-            return true;
+    private function validarColocarPiezas($usuario, $correcta)
+    {
+        if (!is_array($usuario) || !is_array($correcta)) {
+            return false;
         }
+
+        if (count($usuario) !== count($correcta)) {
+            return false;
+        }
+        
+        // Verificar que cada colocación sea correcta
+        foreach ($correcta as $colocacionCorrecta) {
+            $encontrado = false;
+            foreach ($usuario as $colocacionUsuario) {
+                // Comparar tanto abeja como celda
+                if (isset($colocacionUsuario['abeja']) && isset($colocacionUsuario['celda']) &&
+                    isset($colocacionCorrecta['abeja']) && isset($colocacionCorrecta['celda'])) {
+                    
+                    // Convertir a string para comparación flexible
+                    $abejaUsuario = (string)$colocacionUsuario['abeja'];
+                    $celdaUsuario = (int)$colocacionUsuario['celda'];
+                    $abejaCorrecta = (string)$colocacionCorrecta['abeja'];
+                    $celdaCorrecta = (int)$colocacionCorrecta['celda'];
+                    
+                    if ($abejaUsuario === $abejaCorrecta && $celdaUsuario === $celdaCorrecta) {
+                        $encontrado = true;
+                        break;
+                    }
+                }
+            }
+            if (!$encontrado) {
+                return false;
+            }
+        }
+        
+        return true;
     }
-    
-    return false;
+
+    private function validarRompecabezasHexagonos($usuario, $correcta)
+    {
+        if (!is_array($usuario) || !is_array($correcta)) {
+            return false;
+        }
+
+        if (count($usuario) !== count($correcta)) {
+            return false;
+        }
+        
+        // Verificar que cada colocación sea correcta
+        foreach ($correcta as $colocacionCorrecta) {
+            $encontrado = false;
+            foreach ($usuario as $colocacionUsuario) {
+                // Comparar fila, columna y pieza
+                if (isset($colocacionUsuario['fila']) && isset($colocacionUsuario['columna']) && isset($colocacionUsuario['pieza']) &&
+                    isset($colocacionCorrecta['fila']) && isset($colocacionCorrecta['columna']) && isset($colocacionCorrecta['pieza'])) {
+                    
+                    $filaUsuario = (int)$colocacionUsuario['fila'];
+                    $columnaUsuario = (int)$colocacionUsuario['columna'];
+                    $piezaUsuario = (string)$colocacionUsuario['pieza'];
+                    $filaCorrecta = (int)$colocacionCorrecta['fila'];
+                    $columnaCorrecta = (int)$colocacionCorrecta['columna'];
+                    $piezaCorrecta = (string)$colocacionCorrecta['pieza'];
+                    
+                    if ($filaUsuario === $filaCorrecta && $columnaUsuario === $columnaCorrecta && $piezaUsuario === $piezaCorrecta) {
+                        $encontrado = true;
+                        break;
+                    }
+                }
+            }
+            if (!$encontrado) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private function validarColorearHexagonos($usuario, $correcta)
+    {
+        if (!is_array($usuario) || !is_array($correcta)) {
+            return false;
+        }
+
+        if (count($usuario) !== count($correcta)) {
+            return false;
+        }
+        
+        // Verificar que cada colocación sea correcta
+        foreach ($correcta as $colocacionCorrecta) {
+            $encontrado = false;
+            foreach ($usuario as $colocacionUsuario) {
+                // Comparar posición y color
+                if (isset($colocacionUsuario['posicion']) && isset($colocacionUsuario['color']) &&
+                    isset($colocacionCorrecta['posicion']) && isset($colocacionCorrecta['color'])) {
+                    
+                    $posUsuario = $colocacionUsuario['posicion'];
+                    $posCorrecta = $colocacionCorrecta['posicion'];
+                    
+                    if (is_array($posUsuario) && is_array($posCorrecta) &&
+                        count($posUsuario) === 2 && count($posCorrecta) === 2) {
+                        
+                        $filaUsuario = (int)$posUsuario[0];
+                        $columnaUsuario = (int)$posUsuario[1];
+                        $colorUsuario = (string)$colocacionUsuario['color'];
+                        $filaCorrecta = (int)$posCorrecta[0];
+                        $columnaCorrecta = (int)$posCorrecta[1];
+                        $colorCorrecta = (string)$colocacionCorrecta['color'];
+                        
+                        if ($filaUsuario === $filaCorrecta && $columnaUsuario === $columnaCorrecta && $colorUsuario === $colorCorrecta) {
+                            $encontrado = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!$encontrado) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    private function validarTejerAlfombra($usuario, $correcta)
+    {
+        if (!is_array($usuario) || !is_array($correcta)) {
+            return false;
+        }
+
+        // Verificar que tengan el mismo número de filas
+        if (count($usuario) !== count($correcta)) {
+            return false;
+        }
+
+        // Comparar cada fila
+        for ($i = 0; $i < count($usuario); $i++) {
+            if (!is_array($usuario[$i]) || !is_array($correcta[$i])) {
+                return false;
+            }
+
+            // Verificar que tengan el mismo número de columnas
+            if (count($usuario[$i]) !== count($correcta[$i])) {
+                return false;
+            }
+
+            // Comparar cada celda
+            for ($j = 0; $j < count($usuario[$i]); $j++) {
+                $usuarioValor = (string)($usuario[$i][$j] ?? '');
+                $correctaValor = (string)($correcta[$i][$j] ?? '');
+                
+                if ($usuarioValor !== $correctaValor) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private function formatearRespuestaCorrecta($tipo, $correcta)
@@ -323,6 +665,31 @@ private function validarTextoLibre($usuario, $correcta)
             
             case 'rellenar':
                 return 'Revisa la explicación para ver la solución completa.';
+            
+            case 'colocar_piezas':
+                $texto = 'Colocación correcta: ';
+                foreach ($correcta as $colocacion) {
+                    $texto .= "Abeja {$colocacion['abeja']} en celda {$colocacion['celda']}, ";
+                }
+                return rtrim($texto, ', ');
+            
+            case 'rompecabezas_hexagonos':
+                $texto = 'Colocación correcta: ';
+                foreach ($correcta as $colocacion) {
+                    $texto .= "Pieza {$colocacion['pieza']} en fila {$colocacion['fila']}, columna {$colocacion['columna']}, ";
+                }
+                return rtrim($texto, ', ');
+            
+            case 'colorear_hexagonos':
+                $texto = 'Colocación correcta: ';
+                foreach ($correcta as $colocacion) {
+                    $pos = $colocacion['posicion'];
+                    $texto .= "Fila {$pos[0]}, columna {$pos[1]}: {$colocacion['color']}, ";
+                }
+                return rtrim($texto, ', ');
+            
+            case 'tejer_alfombra':
+                return 'Revisa la explicación para ver la solución completa del grid.';
             
             default:
                 return '';

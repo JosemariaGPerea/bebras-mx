@@ -279,22 +279,40 @@ Después de quitar las cuentas, los collares quedaron así:
                 'titulo' => 'Rompecabezas',
                 'descripcion' => 'Sam tiene un rompecabezas con hexágonos de 3 colores. Para colocar una pieza, debe asegurarse que en el triángulo que se forma (con las 2 piezas de abajo), todas sean del mismo color ó que todas sean de colores diferentes.',
                 'imagen_descripcion' => 'preguntas/09/regla.png',
-                'pregunta' => 'Ahora tu, intenta armar un cuadrado de 2x2 utilizando 4 de las siguientes 5 cartas.',
+                'pregunta' => 'Coloca las piezas hexagonales en el rompecabezas siguiendo la regla del triángulo.',
                 'imagen_pregunta' => 'preguntas/09/tarjetas.png',
-                'tipo_interaccion' => 'seleccion_simple',
+                'tipo_interaccion' => 'rompecabezas_hexagonos',
                 'configuracion' => json_encode([
-                    'tipo' => 'texto',
-                    'opciones' => [
-                        ['id' => 'A', 'tipo' => 'texto', 'valor' => 'Tarjeta A'],
-                        ['id' => 'B', 'tipo' => 'texto', 'valor' => 'Tarjeta B'],
-                        ['id' => 'C', 'tipo' => 'texto', 'valor' => 'Tarjeta C'],
-                        ['id' => 'D', 'tipo' => 'texto', 'valor' => 'Tarjeta D'],
-                        ['id' => 'E', 'tipo' => 'texto', 'valor' => 'Tarjeta E'],
+                    'colores' => ['red', 'blue', 'green'],
+                    'piezas_disponibles' => [
+                        ['id' => 'A', 'color' => 'red'],
+                        ['id' => 'B', 'color' => 'blue'],
+                        ['id' => 'C', 'color' => 'green'],
+                        ['id' => 'D', 'color' => 'red'],
+                        ['id' => 'E', 'color' => 'blue'],
                     ],
-                    'pregunta_especial' => '¿Qué tarjeta NO se puede usar?'
+                    'estructura' => [
+                        // Fila 0 (arriba)
+                        [
+                            ['columna' => 0], // Celda vacía para colocar
+                        ],
+                        // Fila 1
+                        [
+                            ['columna' => 0, 'fija' => true, 'color' => 'red', 'id' => 'F1'], // Pieza fija
+                            ['columna' => 1], // Celda vacía
+                        ],
+                        // Fila 2 (abajo)
+                        [
+                            ['columna' => 0, 'fija' => true, 'color' => 'blue', 'id' => 'F2'], // Pieza fija
+                            ['columna' => 1, 'fija' => true, 'color' => 'green', 'id' => 'F3'], // Pieza fija
+                        ],
+                    ],
                 ]),
-                'respuesta_correcta' => json_encode(['C']),
-                'explicacion' => 'La tarjeta C (con estrellas azules) no se puede usar. Las tarjetas A, B, D y E sí forman un cuadrado válido.',
+                'respuesta_correcta' => json_encode([
+                    ['fila' => 0, 'columna' => 0, 'pieza' => 'A', 'color' => 'red'],
+                    ['fila' => 1, 'columna' => 1, 'pieza' => 'B', 'color' => 'blue'],
+                ]),
+                'explicacion' => 'Las piezas deben colocarse de forma que cada triángulo (pieza nueva + 2 de abajo) tenga todas las piezas del mismo color O todas de colores diferentes.',
                 'imagen_respuesta' => null,
                 'nivel' => 'III',
                 'dificultad' => 'Media',
@@ -463,6 +481,15 @@ Un día, un espía enemigo entró al archivo y abrió una de las cartas selladas
                         ['id' => 'centro', 'nombre' => 'Centro'],
                     ],
                     'tipo_validacion' => 'flexible', // Hay múltiples soluciones
+                    'adyacencias' => [
+                        'fondo' => ['petalo1', 'petalo2', 'petalo3', 'petalo4', 'petalo5', 'centro'],
+                        'petalo1' => ['fondo', 'centro'],
+                        'petalo2' => ['fondo', 'centro'],
+                        'petalo3' => ['fondo', 'centro'],
+                        'petalo4' => ['fondo', 'centro'],
+                        'petalo5' => ['fondo', 'centro'],
+                        'centro' => ['fondo', 'petalo1', 'petalo2', 'petalo3', 'petalo4', 'petalo5']
+                    ]
                 ]),
                 'respuesta_correcta' => json_encode([
                     // Una de las 6 soluciones posibles
@@ -490,7 +517,7 @@ Un día, un espía enemigo entró al archivo y abrió una de las cartas selladas
                 'imagen_descripcion' => 'preguntas/15/panal_vacio.png',
                 'pregunta' => 'Coloca las diferentes abejas en el panal de forma que sigan sus reglas.',
                 'imagen_pregunta' => 'preguntas/15/abejas_reglas.png',
-                'tipo_interaccion' => '',
+                'tipo_interaccion' => 'colocar_piezas',
                 'configuracion' => json_encode([
                     'celdas_hexagonales' => 19, // Total de celdas en el panal
                     'abejas' => [
@@ -687,7 +714,7 @@ Un día, un espía enemigo entró al archivo y abrió una de las cartas selladas
                 'imagen_descripcion' => 'preguntas/21/regla_hexagonos.png',
                 'pregunta' => 'Sam comienza colocando las piezas como se muestran. Colorea los hexágonos vacíos para que sigan la regla hasta terminar el rompecabezas.',
                 'imagen_pregunta' => 'preguntas/21/hexagonos_inicial.png',
-                'tipo_interaccion' => '',
+                'tipo_interaccion' => 'colorear_hexagonos',
                 'configuracion' => json_encode([
                     'colores_disponibles' => ['verde', 'amarillo', 'azul'],
                     'estructura' => 'piramide',
@@ -862,11 +889,11 @@ En las mañanas, cuando los pilotos llegan a sacar sus aviones, la posición 1 s
                 'imagen_descripcion' => 'preguntas/26/diagrama_decisiones.png',
                 'pregunta' => '¿Cómo quedará la alfombra al final? Dibuja el símbolo que corresponde en cada celda.',
                 'imagen_pregunta' => 'preguntas/26/alfombra.png',
-                'tipo_interaccion' => '',
+                'tipo_interaccion' => 'tejer_alfombra',
                 'configuracion' => json_encode([
                     'filas' => 6,
                     'columnas' => 6,
-                    'simbolos_disponibles' => ['purple', 'red', 'yellow'],
+                    'simbolos_disponibles' => ['purple', 'red', 'yellow', 'green'],
                     'reglas' => [
                         '¿Fila o columna es 1 o 6? → Morado',
                         '¿Fila = Columna? → Rojo',
@@ -931,6 +958,8 @@ En las mañanas, cuando los pilotos llegan a sacar sus aviones, la posición 1 s
         ];
 
         foreach ($preguntas as $pregunta) {
+            // Asegurar que todas las preguntas estén activas por defecto
+            $pregunta['activa'] = true;
             DB::table('preguntas')->insert($pregunta);
         }
     }

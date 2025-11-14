@@ -1,16 +1,28 @@
 
-<div class="grid md:grid-cols-2 gap-6">
+<div class="grid md:grid-cols-2 gap-3">
+    @php
+        // Mezclar los elementos de forma aleatoria (crear copia para no modificar el original)
+        $elementos = $pregunta->configuracion['elementos'];
+        $elementosMezclados = $elementos; // Crear copia
+        shuffle($elementosMezclados); // Mezclar la copia
+    @endphp
+    
     {{-- Elementos desordenados --}}
     <div>
-        <h4 class="font-semibold text-gray-700 mb-3">Elementos disponibles:</h4>
-        <div id="elementos-fuente" class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-4 min-h-[200px]">
-            @foreach($pregunta->configuracion['elementos'] as $elemento)
-                <div class="elemento-draggable bg-white border-2 border-gray-300 rounded-lg p-3 mb-2 cursor-move hover:shadow-lg transition-shadow"
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">
+            Disponibles: 
+            <span class="text-xs font-normal text-gray-500" id="contador-fuente">
+                ({{ count($elementosMezclados) }})
+            </span>
+        </h4>
+        <div id="elementos-fuente" class="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-2 min-h-[150px] max-h-[300px] overflow-y-auto">
+            @foreach($elementosMezclados as $elemento)
+                <div class="elemento-draggable bg-white border-2 border-gray-300 rounded-lg p-2 mb-1 cursor-move hover:shadow-lg transition-shadow"
                      data-id="{{ $elemento['id'] }}">
                     @if(isset($elemento['imagen']))
-                        <img src="{{ asset('storage/' . $elemento['imagen']) }}" alt="{{ $elemento['id'] }}" class="full w-auto h-16 object-contain mb-2">
+                        <img src="{{ asset('storage/' . $elemento['imagen']) }}" alt="{{ $elemento['id'] }}" class="full w-auto h-12 object-contain">
                     @else
-                        <span class="font-medium">{{ $elemento['nombre'] ?? $elemento['id'] }}</span>
+                        <span class="text-sm font-medium">{{ $elemento['nombre'] ?? $elemento['id'] }}</span>
                     @endif
                 </div>
             @endforeach
@@ -19,9 +31,12 @@
 
     {{-- Área de ordenamiento --}}
     <div>
-        <h4 class="font-semibold text-gray-700 mb-3">Arrastra aquí en el orden correcto:</h4>
-        <div id="area-ordenamiento" class="bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-4 min-h-[200px]">
-            <p class="text-gray-400 text-center py-8" id="placeholder-orden">Arrastra los elementos aquí</p>
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">
+            Orden correcto: 
+            <span class="text-xs font-normal text-gray-500" id="contador-destino">(0)</span>
+        </h4>
+        <div id="area-ordenamiento" class="bg-blue-50 border-2 border-dashed border-blue-300 rounded-lg p-2 min-h-[150px] max-h-[300px] overflow-y-auto">
+            <p class="text-xs text-gray-400 text-center py-4" id="placeholder-orden">Arrastra los elementos aquí</p>
         </div>
     </div>
 </div>

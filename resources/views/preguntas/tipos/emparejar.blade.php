@@ -1,17 +1,17 @@
 
-<div class="grid md:grid-cols-2 gap-8">
+<div class="grid md:grid-cols-2 gap-3">
     {{-- Objetos --}}
     <div>
-        <h4 class="font-semibold text-gray-700 mb-4">Objetos:</h4>
-        <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">Objetos:</h4>
+        <div class="space-y-2">
             @foreach($pregunta->configuracion['objetos'] as $objeto)
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                     <img src="{{ asset('storage/' . $objeto['imagen']) }}" 
                          alt="{{ $objeto['nombre'] }}" 
-                         class="w-16 h-16 object-contain">
-                    <span class="font-medium">{{ $objeto['nombre'] }}</span>
+                         class="w-12 h-12 object-contain flex-shrink-0">
+                    <span class="text-sm font-medium flex-1 min-w-0 truncate">{{ $objeto['nombre'] }}</span>
                     <select 
-                        class="ml-auto border-2 border-gray-300 rounded-lg px-3 py-2 emparejamiento"
+                        class="ml-auto border-2 border-gray-300 rounded-lg px-2 py-1 text-sm emparejamiento flex-shrink-0"
                         data-objeto="{{ $objeto['id'] }}">
                         <option value="">Selecciona...</option>
                         @foreach($pregunta->configuracion['destinos'] as $destino)
@@ -25,11 +25,11 @@
 
     {{-- Destinos (visual) --}}
     <div>
-        <h4 class="font-semibold text-gray-700 mb-4">Destinos:</h4>
-        <div class="space-y-3">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">Destinos:</h4>
+        <div class="space-y-2">
             @foreach($pregunta->configuracion['destinos'] as $destino)
-                <div class="p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
-                    <span class="font-bold text-lg">{{ $destino['nombre'] }}</span>
+                <div class="p-2 bg-gray-100 border-2 border-gray-300 rounded-lg">
+                    <span class="font-bold text-sm">{{ $destino['nombre'] }}</span>
                 </div>
             @endforeach
         </div>

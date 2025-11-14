@@ -6,7 +6,7 @@
     <title>Panel de Administración - Bebras MX</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 pb-20">
     
     {{-- Header --}}
     <div class="bg-white shadow-md">
@@ -218,6 +218,6 @@
             });
         }
     </script>
-    @extends('layouts.footer')
+    @include('layouts.footer')
 </body>
 </html>

@@ -7,7 +7,7 @@
     <title>Biblioteca de Preguntas - Bebras MX</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen">
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen pb-20">
     
     {{-- Header --}}
     <div class="bg-white shadow-lg">
@@ -75,7 +75,7 @@
                     <div class="mt-4">
                         <div class="w-full bg-gray-200 rounded-full h-3">
                             <div class="bg-blue-600 h-3 rounded-full transition-all" 
-                                 style="width: {{ ($respondidas / $totalPreguntas) * 100 }}%"></div>
+                                 style="width: {{ $totalPreguntas > 0 ? round(($respondidas / $totalPreguntas) * 100) : 0 }}%"></div>
                         </div>
                         <p class="text-xs text-gray-500 mt-1 text-center">
                             {{ $respondidas }} de {{ $totalPreguntas }} preguntas completadas
@@ -209,6 +209,6 @@
             });
         }
     </script>
-    @extends('layouts.footer')
+    @include('layouts.footer')
 </body>
 </html>

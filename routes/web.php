@@ -12,7 +12,7 @@ Route::get('/', function () {
 
 // Redirigir según rol después del login
 Route::get('dashboard', function () {
-    if (auth()->user()->role === 'admin') {
+    if (auth()->check() && auth()->user()->role === 'admin') {
         return redirect()->route('admin.dashboard');
     }
     return redirect()->route('preguntas.index');

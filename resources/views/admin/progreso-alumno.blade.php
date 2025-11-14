@@ -6,7 +6,7 @@
     <title>Progreso de {{ $alumno->name }} - Bebras MX</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 pb-20">
     
     {{-- Header --}}
     <div class="bg-white shadow-md">
@@ -129,7 +129,7 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-500">
-                                    @if($item['progreso'])
+                                    @if($item['progreso'] && $item['progreso']->completada_at)
                                         {{ $item['progreso']->completada_at->format('d/m/Y H:i') }}
                                     @else
                                         -
@@ -143,6 +143,6 @@
         </div>
 
     </div>
-    @extends('layouts.footer')
+    @include('layouts.footer')
 </body>
 </html>
