@@ -11,40 +11,49 @@
         <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     @endif
 </head>
-<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen pb-20">
+<body class="min-h-screen flex flex-col relative">
+    <!-- Fondo con gradiente animado -->
+    <div class="fixed inset-0 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-900 dark:via-purple-900 dark:to-pink-900">
+        <!-- Patrón de puntos decorativo -->
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(circle, white 1px, transparent 1px); background-size: 30px 30px;"></div>
+        <!-- Círculos decorativos animados -->
+        <div class="absolute top-0 -left-4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply opacity-30 animate-pulse" style="filter: blur(80px); animation-duration: 8s;"></div>
+        <div class="absolute top-0 -right-4 w-96 h-96 bg-pink-400 rounded-full mix-blend-multiply opacity-30 animate-pulse" style="filter: blur(80px); animation-duration: 10s; animation-delay: 2s;"></div>
+        <div class="absolute -bottom-8 left-20 w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply opacity-30 animate-pulse" style="filter: blur(80px); animation-duration: 12s; animation-delay: 4s;"></div>
+    </div>
     
     {{-- Navegación Superior --}}
-    <div class="bg-white shadow-md">
-        <div class="max-w-5xl mx-auto px-4 py-2 flex items-center justify-between">
-            <a href="{{ route('preguntas.index') }}" class="text-blue-600 hover:text-blue-800 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="relative z-10 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl shadow-lg border-b border-white/30">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="{{ route('preguntas.index') }}" class="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-2 font-semibold transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
                 </svg>
                 Volver a preguntas
             </a>
-            <div class="text-sm text-gray-600">
+            <div class="text-sm font-semibold text-neutral-700 dark:text-neutral-300 bg-white/50 dark:bg-neutral-800/50 px-4 py-1.5 rounded-full backdrop-blur-sm">
                 Pregunta {{ $pregunta->numero }} de 27
             </div>
         </div>
     </div>
 
-    <div class="max-w-5xl mx-auto py-3 px-4">
+    <div class="relative z-10 max-w-5xl mx-auto py-6 px-4 flex-1">
         
         {{-- Descripción --}}
-        <div class="bg-white rounded-lg shadow-lg p-3 mb-3">
-            <div class="flex items-start justify-between mb-2">
+        <div class="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-6 mb-6 animate-slide-up">
+            <div class="flex items-start justify-between mb-3">
                 <div class="flex-1">
-                    <h2 class="text-xl font-bold text-gray-800 mb-1">
+                    <h2 class="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
                         {{ $pregunta->numero }}. {{ $pregunta->titulo }}
                     </h2>
-                    <div class="flex gap-2 mb-2">
-                        <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                    <div class="flex gap-2 mb-3">
+                        <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-semibold backdrop-blur-sm">
                             Nivel {{ $pregunta->nivel }}
                         </span>
-                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold
-                            {{ $pregunta->dificultad === 'Baja' ? 'bg-green-100 text-green-700' : '' }}
-                            {{ $pregunta->dificultad === 'Media' ? 'bg-yellow-100 text-yellow-700' : '' }}
-                            {{ $pregunta->dificultad === 'Alta' ? 'bg-red-100 text-red-700' : '' }}">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-sm
+                            {{ $pregunta->dificultad === 'Baja' ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300' : '' }}
+                            {{ $pregunta->dificultad === 'Media' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300' : '' }}
+                            {{ $pregunta->dificultad === 'Alta' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300' : '' }}">
                             {{ $pregunta->dificultad }}
                         </span>
                     </div>
@@ -52,29 +61,29 @@
             </div>
             
             <div class="prose max-w-none">
-                <p class="text-sm text-gray-700 leading-snug whitespace-pre-line">{{ $pregunta->descripcion }}</p>
+                <p class="text-sm text-neutral-700 dark:text-neutral-300 leading-relaxed whitespace-pre-line">{{ $pregunta->descripcion }}</p>
             </div>
             
             @if($pregunta->imagen_descripcion)
-                <div class="mt-2 flex justify-center">
+                <div class="mt-4 flex justify-center">
                     <img src="{{ asset('storage/' . $pregunta->imagen_descripcion) }}" 
                          alt="Descripción" 
-                         class="max-w-full max-h-48 rounded-lg shadow-md object-contain">
+                         class="max-w-full max-h-48 rounded-xl shadow-lg object-contain border-2 border-white/30">
                 </div>
             @endif
         </div>
 
         {{-- Pregunta --}}
-        <div class="bg-white rounded-lg shadow-lg p-3">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3 border-b-2 border-blue-500 pb-1">
+        <div class="bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-6 animate-slide-up" style="animation-delay: 0.1s;">
+            <h3 class="text-xl font-bold text-neutral-800 dark:text-white mb-4 pb-3 border-b-2 border-indigo-500">
                 {{ $pregunta->pregunta }}
             </h3>
             
             @if($pregunta->imagen_pregunta)
-                <div class="mb-3 flex justify-center">
+                <div class="mb-4 flex justify-center">
                     <img src="{{ asset('storage/' . $pregunta->imagen_pregunta) }}" 
                          alt="Pregunta" 
-                         class="max-w-full max-h-48 rounded-lg object-contain">
+                         class="max-w-full max-h-48 rounded-xl shadow-lg object-contain border-2 border-white/30">
                 </div>
             @endif
 
@@ -113,11 +122,14 @@
                 id="btnVerificar"
                 onclick="verificarRespuesta()"
                 @if(empty($pregunta->tipo_interaccion)) disabled @endif
-                class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg hover:from-blue-700 hover:to-purple-700 font-semibold text-base transition-all shadow-lg @if(empty($pregunta->tipo_interaccion)) opacity-50 cursor-not-allowed @endif">
+                class="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300 font-bold text-base flex items-center justify-center gap-2 group @if(empty($pregunta->tipo_interaccion)) opacity-50 cursor-not-allowed @endif">
                 @if(empty($pregunta->tipo_interaccion))
                     Tipo de Interacción No Disponible
                 @else
-                    Verificar Respuesta
+                    <span>Verificar Respuesta</span>
+                    <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                 @endif
             </button>
 
@@ -137,7 +149,7 @@
 
                 @if($preguntaAnterior)
                     <a href="{{ route('preguntas.show', $preguntaAnterior->id) }}" 
-                       class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-1">
+                       class="flex-1 bg-white/20 dark:bg-neutral-800/20 backdrop-blur-md hover:bg-white/30 dark:hover:bg-neutral-800/30 text-neutral-800 dark:text-neutral-200 border-2 border-white/30 hover:border-white/50 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
@@ -149,7 +161,7 @@
 
                 @if($preguntaSiguiente)
                     <a href="{{ route('preguntas.show', $preguntaSiguiente->id) }}" 
-                       class="flex-1 bg-gradient-to-r py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-1 colors-white from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                       class="flex-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2">
                         Siguiente
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
@@ -157,7 +169,7 @@
                     </a>
                 @else
                     <a href="{{ route('preguntas.index') }}" 
-                       class="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-1">
+                       class="flex-1 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-2.5 px-4 rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center gap-2">
                         Finalizar
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -168,6 +180,32 @@
         </div>
 
     </div>
+
+    <style>
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-slide-up {
+            animation: slide-up 0.8s ease-out both;
+        }
+    </style>
 
     {{-- Scripts específicos por tipo --}}
     @if(!empty($pregunta->tipo_interaccion))

@@ -1,9 +1,9 @@
-<footer class="bg-gray-800 text-white fixed bottom-0 left-0 right-0 z-50 shadow-lg">
+<footer class="relative z-10 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-xl border-t border-white/30 shadow-lg mt-auto">
     <div class="max-w-7xl mx-auto px-4 py-4">
         <div class="grid md:grid-cols-3 gap-8">
             <div>
-                <p class="text-gray-400 text-sm text-center md:text-left">
-                    Josemaria G Perea
+                <p class="text-neutral-600 dark:text-neutral-400 text-sm text-center md:text-left">
+                    Nestbytes en colaboración con Josemaria G Perea 
                 </p>
             </div>
         </div>
